@@ -15,6 +15,7 @@ on:
 
 jobs:
   deploy-dev:
+    environment: dev
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
@@ -22,8 +23,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build and Push Image to ECR (Dev)
-        run: |
-          echo "Building and pushing image to ECR for dev..."
+        uses: ./.github/actions/build-artifact
+        with:
+          tag: ${{ github.sha }}
 
       - name: Apply Terraform / Helm for Dev
         run: |
@@ -31,8 +33,10 @@ jobs:
           # terraform apply -var-file=environments/dev.tfvars
 
       - name: Run Post-Deploy Integration Tests
-        run: |
-          echo "Validating Dev environment health..."
+        uses: ./.github/actions/run-system-tests
+        with:
+          test_type: full 
+          target_url: [https://dev.sas-product.internal]
 
       - name: Check Test Results & Gate Staging
         if: failure()

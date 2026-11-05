@@ -1,4 +1,4 @@
-name: Dev CD Pipeline
+name: Staging CD Pipeline
 
 on:
   push:
@@ -15,6 +15,7 @@ on:
 
   jobs:
   deploy-staging:
+    environment: staging
     if: github.event_name == 'workflow_dispatch' && inputs.target_env == 'staging'
     runs-on: ubuntu-latest
     steps:
@@ -27,8 +28,10 @@ on:
           # terraform apply -var-file=environments/staging.tfvars
 
       - name: Run Staging Integration Tests
-        run: |
-          echo "Running staging test suite..."
+        uses: ./.github/actions/run-system-tests
+        with:
+          test_type: smoke 
+          target_url: https://staging.sas-product.internal
           
       - name: Verify Staging Gate for Production
         if: failure()
