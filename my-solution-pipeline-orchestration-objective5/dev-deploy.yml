@@ -1,0 +1,41 @@
+name: Dev CD Pipeline
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: 'Target Environment to Deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+
+jobs:
+  deploy-dev:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build and Push Image to ECR (Dev)
+        run: |
+          echo "Building and pushing image to ECR for dev..."
+
+      - name: Apply Terraform / Helm for Dev
+        run: |
+          echo "Deploying infrastructure & application to Dev environment..."
+          # terraform apply -var-file=environments/dev.tfvars
+
+      - name: Run Post-Deploy Integration Tests
+        run: |
+          echo "Validating Dev environment health..."
+
+      - name: Check Test Results & Gate Staging
+        if: failure()
+        run: |
+          echo "ERROR: Dev integration tests failed! Flagging build."
+          exit 1

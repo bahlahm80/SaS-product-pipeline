@@ -1,0 +1,37 @@
+name: PR Validation & Ephemeral Stack
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build PR Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false # Do not push to ECR yet, just build locally in runner
+          tags: sas-product:${{ github.event.pull_request.head.sha }}
+
+      - name: Spin up Local Dev Stack (Kind / Docker Compose)
+        run: |
+          echo "Setting up ephemeral PR stack for testing..."
+          # docker-compose up -d or kubectl apply for temporary PR namespace
+
+      - name: Run Integration Tests
+        run: |
+          echo "Running integration test suite against PR stack..."
+          # pytest / integration test runner script here
+          
+      - name: Teardown Ephemeral Stack
+        if: always()
+        run: |
+          echo "Cleaning up PR stack resources..."

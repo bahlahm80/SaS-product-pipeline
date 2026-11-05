@@ -1,0 +1,37 @@
+name: Dev CD Pipeline
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: 'Target Environment to Deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+
+  jobs:
+  deploy-staging:
+    if: github.event_name == 'workflow_dispatch' && inputs.target_env == 'staging'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Staging via Terraform/Helm
+        run: |
+          echo "Deploying to Staging environment..."
+          # terraform apply -var-file=environments/staging.tfvars
+
+      - name: Run Staging Integration Tests
+        run: |
+          echo "Running staging test suite..."
+          
+      - name: Verify Staging Gate for Production
+        if: failure()
+        run: |
+          echo "STAGING FAILURE: Production deployment lock engaged."
+          exit 1

@@ -1,0 +1,25 @@
+name: 'Run System Integration Tests'
+description: 'Installs dependencies and runs integration tests'
+
+inputs:
+  test_type:
+    description: 'Type of test suite to run (full or smoke)'
+    required: true
+    default: 'full'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run Validation Test Suite (Dev)
+      shell: bash
+      run: |
+        echo "Running integration tests..."
+        # Example: yarn install && yarn runCypressTest
+        # Or pytest depending on your stack
+        pytest tests/integration/
+    - name: Run Production Smoke Test Suite (Prod)
+      if: inputs.test_type == 'smoke'
+      shell: bash
+      run: |
+        echo "Running production smoke test suite..."
+        pytest tests/smoke/

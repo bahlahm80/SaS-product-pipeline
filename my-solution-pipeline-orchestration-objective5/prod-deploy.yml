@@ -1,0 +1,48 @@
+name: Customer Purchase Onboarding (Prod)
+
+on:
+  repository_dispatch:
+    types: [customer-purchased]
+  workflow_dispatch:
+    inputs:
+      company_id:
+        description: 'Customer Slug ID'
+        required: true
+        default: 'acme-corp'
+      company_name:
+        description: 'Customer Company Name'
+        required: true
+        default: 'Acme Corp'
+      company_motto:
+        description: 'Customer Motto'
+        required: true
+        default: 'Excellence in Scale'
+
+jobs:
+    onboard-tenant:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout Code
+          uses: actions/checkout@v4
+
+        - name: Authenticate with AWS ECR & Kubernetes
+          run: |
+            echo "Logging into AWS and setting up kubectl context..."
+
+        - name: Build & Push Production Image
+          run: |
+            echo "Building tenant-specific application image..."
+
+        - name: Provision Tenant via Terraform / Helm
+          run: |
+            TENANT_ID="${{ github.event.client_payload.company_id || inputs.company_id }}"
+            COMP_NAME="${{ github.event.client_payload.company_name || inputs.company_name }}"
+            COMP_MOTTO="${{ github.event.client_payload.company_motto || inputs.company_motto }}"
+
+            echo "Applying Terraform / Helm for tenant: $TENANT_ID"
+            # Here is where your Terraform code or Helm chart gets parameterized with 
+            # the new customer's data and scaled in the production cluster (Objective 4 & 9)
+
+        - name: Run Production Tenant Smoke Test
+          run: |
+            echo "Verifying newly onboarded customer URL returns 200 OK with company name and motto."
