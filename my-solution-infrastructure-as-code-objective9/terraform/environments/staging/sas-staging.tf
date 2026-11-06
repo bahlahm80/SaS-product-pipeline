@@ -37,13 +37,26 @@ module "sas" {
     # Fill them after the first ingress creates the ALB
     alb_dns_name    = ""
     alb_zone_id     = ""
+    node_instance_types     = ["t3.medium"]
+    node_min_size           = 2
+    node_min_size           = 5
+    node_desired_size       = 2
+
+    image_tag               = "v1.0.0"
+    customers               = {
+        acme-test               = {
+            company_name        = "Test Company Staging"
+            motto               = "Testing Company in Staging at scale"
+            host                = "test-company-staging.sas-product.internal"
+        }
+    }
 }
 
 output "vpc_id" {
     value = module.sas.vpc_id
 }
 
-output "ekc_cluster_endpoint" {
+output "eks_cluster_endpoint" {
     value = module.sas.eks_cluster_endpoint
 }
 

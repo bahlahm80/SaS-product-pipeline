@@ -7,7 +7,7 @@ resource "aws_iam_openid_connect_provider" "github" {
 
 # IAM Role assumed by GitHub Actions workflows dynamically per region/account
 resource "aws_iam_role" "github_actions" {
-  name = "GitHubActions-{var.environment}Role-${var.aws_region}"
+  name = "GitHubActions-${var.environment}Role-${var.aws_region}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -20,7 +20,7 @@ resource "aws_iam_role" "github_actions" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringLike = {
-            "token.actions.githubusercontent.com:sub" : "repo:your-github-org/sas-product:*"
+            "token.actions.githubusercontent.com:sub" : "repo:bahlahm80/SaS-product-pipeline"
           }
         }
       }

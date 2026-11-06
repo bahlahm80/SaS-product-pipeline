@@ -10,3 +10,7 @@ output "ecr_repository_url" {
   value = module.infrastructure.ecr_repository_url
 }
 
+output "customer_urls" {
+  description = "One URL per customer, from the customer module."
+  value = { for k, m in module.customer : k => m.url}
+}
