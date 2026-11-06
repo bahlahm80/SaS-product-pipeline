@@ -1,8 +1,9 @@
-resource "aws_ssm_parameter" "db_connection_string" {
-  name        = "/sas/${var.environment}/database/connection_string"
-  description = "Encrypted database connection string for tenant workloads"
+# placeholder for secrets for application to run
+resource "aws_ssm_parameter" "sas_app_auth_token" {
+  name        = "/sas/${var.environment}/app/api_key"
+  description = "api key secret for authenticating with backend api services"
   type        = "SecureString"
-  value       = "postgres://placeholder-user:placeholder-pass@rds-cluster.internal:5432/sas_${var.environment}"
+  value       = "CHANGE_ME_IN_SSM"
 
   lifecycle {
     ignore_changes = [value] # Prevents Terraform from overwriting manual or external secret updates

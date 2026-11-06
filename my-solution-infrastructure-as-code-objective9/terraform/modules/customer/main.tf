@@ -82,6 +82,15 @@ resource "kubernetes_deployment" "web" {
                             }
                         }
                     }
+                    env {
+                        name    = "API_KEY"
+                        value_from {
+                            secret_key_ref {
+                                name    = "customer-${var.customer_slug}-secrets"
+                                key     = "api_key"
+                            }
+                        }
+                    }
                 }
             }
         }
