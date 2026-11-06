@@ -61,3 +61,32 @@ resource "aws_iam_role_policy" "github_actions_deployment" {
     ]
   })
 }
+
+# ALB Controller IAM policy — all IAM lives here
+data "aws_iam_policy_document" "alb_controller" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "ec2:Describe*",
+      "elasticloadbalancing:Describe*",
+      "elasticloadbalancing:CreateLoadBalancer",
+      "elasticloadbalancing:CreateTargetGroup",
+      "elasticloadbalancing:CreateListener",
+      "elasticloadbalancing:DeleteLoadBalancer",
+      "elasticloadbalancing:DeleteTargetGroup",
+      "elasticloadbalancing:DeleteListener",
+      "elasticloadbalancing:ModifyLoadBalancerAttributes",
+      "elasticloadbalancing:ModifyTargetGroup",
+      "elasticloadbalancing:RegisterTargets",
+      "elasticloadbalancing:DeregisterTargets",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "alb_controller" {
+  name        = "AWSLoadBalancerControllerIAMPolicy-${var.environment}"
+  description = "IAM policy required for the Kubernetes AWS Load Balancer Controller"
+  path        = "/"
+  policy      = data.aws_iam_policy_document.alb_controller.json
+}

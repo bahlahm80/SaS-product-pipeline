@@ -1,7 +1,6 @@
-# IAM policy for AWS Load Balancer Controller running inside EKS
-resource "aws_iam_policy" "alb_controller" {
-  name        = "AWSLoadBalancerControllerIAMPolicy-${var.environment}"
-  description = "IAM policy required for the Kubernetes AWS Load Balancer Controller"
-  path        = "/"
-  policy      = file("${path.module}/policies/alb-controller-policy.json") # Standard AWS provided JSON policy
-}
+# ALB is created by the AWS Load Balancer Controller when an Ingress appears.
+# Its IAM policy lives in iam.tf — referenced here as:
+#   aws_iam_policy.alb_controller.arn
+#
+# Next step: Helm release for the controller + IRSA role attachment
+# using that policy ARN.
