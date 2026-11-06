@@ -39,7 +39,7 @@ module "sas" {
     alb_zone_id  = ""
     node_instance_types     = ["t3.large"]
     node_min_size           = 3
-    node_min_size           = 10
+    node_max_size           = 10
     node_desired_size       = 3
 
     image_tag               = "v1.0.0"

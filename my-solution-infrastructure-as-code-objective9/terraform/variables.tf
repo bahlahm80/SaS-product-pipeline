@@ -29,37 +29,37 @@ variable "node_instance_types" {
 }
 
 variable "node_min_size" {
-  type        = number,
+  type        = number
   default     = 1
 }
 
 variable "node_max_size" {
-  type        = number,
+  type        = number
   default     = 3
 }
 
 variable "node_desired_size" {
-  type        = number,
+  type        = number
   default     = 2
 }
 
 variable "container_cpu_request" {
-  type        = string,
+  type        = string
   default     = "100m"
 }
 
 variable "container_memory_request" {
-  type        = string,
+  type        = string
   default     = "128Mi"
 }
 
 variable "container_cpu_limit" {
-  type        = string,
+  type        = string
   default     = "500m"
 }
 
 variable "container_memory_limit" {
-  type        = string,
+  type        = string
   default     = "256Mi"
 }
 

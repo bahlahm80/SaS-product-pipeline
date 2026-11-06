@@ -1,14 +1,14 @@
-resource "kubernetes_namespace" "this" {
+resource "kubernetes_namespace_v1" "this" {
     metadata {
         name    = "customer-${var.customer_slug}"
         labels  = { customer = var.customer_slug }
     }
 }
 
-resource "kubernetes_resource_quota" "this" {
+resource "kubernetes_resource_quota_v1" "this" {
     metadata {
         name        = "customer-${var.customer_slug}-quota"
-        namespace   = kubernetes_namespace.this.metadata[0].name 
+        namespace   = kubernetes_namespace_v1.this.metadata[0].name 
     }
     spec {
         hard = {
@@ -24,7 +24,7 @@ resource "kubernetes_resource_quota" "this" {
 resource "kubernetes_config_map" "site" {
     metadata {
         name        = "customer-${var.customer_slug}-site"
-        namespace   = kubernetes_namespace.this.metadata[0].name
+        namespace   = kubernetes_namespace_v1.this.metadata[0].name
     }
     data = {
         company_name    = var.company_name
@@ -35,7 +35,7 @@ resource "kubernetes_config_map" "site" {
 resource "kubernetes_deployment" "web" {
     metadata {
         name        = "customer-${var.customer_slug}-web"
-        namespace   = kubernetes_namespace.this.metadata[0].name
+        namespace   = kubernetes_namespace_v1.this.metadata[0].name
     }
     spec {
         replicas = var.replicas
@@ -91,7 +91,7 @@ resource "kubernetes_deployment" "web" {
 resource "kubernetes_service" "web" {
     metadata {
         name        = "customer-${var.customer_slug}-web"
-        namespace   = kubernetes_namespace.this.metadata[0].name
+        namespace   = kubernetes_namespace_v1.this.metadata[0].name
     }
     spec {
         selector = { app = "customer-${var.customer_slug}-web" }
@@ -105,7 +105,7 @@ resource "kubernetes_service" "web" {
 resource "kubernetes_ingress_v1" "web" {
     metadata {
         name        = "customer-${var.customer_slug}-web"
-        namespace   = kubernetes_namespace.this.metadata[0].name
+        namespace   = kubernetes_namespace_v1.this.metadata[0].name
     }
     spec {
         rule {
@@ -130,10 +130,10 @@ resource "kubernetes_ingress_v1" "web" {
 resource "kubernetes_horizontal_pod_autoscaler_v2" "web" {
     metadata {
         name            = "customer-${var.customer_slug}-web"
-        namespace       = kubernetes_namespace.this.metadata[0].name
+        namespace       = kubernetes_namespace_v1.this.metadata[0].name
     }
     spec {
-        scale_target_def {
+        scale_target_ref {
             api_version = "apps/v1"
             kind        = "Deployment"
             name        = kubernetes_deployment.web.metadata[0].name

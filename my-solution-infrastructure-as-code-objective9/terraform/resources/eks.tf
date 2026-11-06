@@ -4,7 +4,7 @@ module "eks" {
 
   cluster_name              = "sas-cluster-${var.environment}"
   cluster_version           = "1.31"
-  cluster_enabled_log_type  = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+  cluster_enabled_log_types  = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
   vpc_id                    = module.vpc.vpc_id
   subnet_ids                = module.vpc.private_subnets
