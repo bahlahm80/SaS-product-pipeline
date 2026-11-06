@@ -30,9 +30,35 @@ jobs:
         - name: Checkout Code
           uses: actions/checkout@v4
 
-        - name: Authenticate with AWS ECR & Kubernetes
+        - name: Resolve Dynamic Tenant Metadata
+          id: meta
           run: |
-            echo "Logging into AWS and setting up kubectl context..."
+            TENANT_ID="${{ github.event.client_payload.company_id || inputs.company_id }}"
+            REGION="${{ github.event.client_payload.aws_region || inputs.aws_region || 'us-east-1' }}"
+            TAG="${{ github.event.client_payload.image_tag || inputs.image_tag }}"
+            IAM_ROLE="arn:aws:iam::333333333333:role/GitHubActionsProdRole-$REGION"
+
+            echo "tenant_id=$TENANT_ID" >> $GITHUB_OUTPUT
+            echo "aws_region=$REGION" >> $GITHUB_OUTPUT
+            echo "image_tag=$TAG" >> $GITHUB_OUTPUT
+            echo "iam_role=$IAM_ROLE" >> $GITHUB_OUTPUT
+            echo "Targeting Tenant: $TENANT_ID in Region: $REGION with Tag: $TAG"
+
+        - name: Authenticate with Production AWS Account
+          uses: aws-actions/configure-aws-credentials@v4
+          with:
+            aws-region: ${{ steps.meta.outputs.aws_region }}
+            role-to-assume: ${{ steps.meta.outputs.IAM_ROLE}}
+
+        - name: Pull and Push Artifact to Production ECR
+          uses: ./.github/actions/pull-artifact
+          with:
+            tag: ${{ inputs.image_tag }}
+            artifactory_url: 'artifactory.internal/sas-product'
+            artifactory_user: ${{ secrets.ARTIFACTORY_USER }}
+            artifactory_token: ${{ secrets.ARTIFACTORY_TOKEN }}
+            local_ecr_registry: '333333333333.dkr.ecr.us-east-1.amazonaws.com/sas-product-production'
+            aws_region: ${{ steps.meta.outputs.aws_region}}
 
         - name: Provision or Update Tenant via Helm / Terraform
           id: deploy-tenant
@@ -50,7 +76,6 @@ jobs:
               --set companyName="$COMP_NAME" \
               --set companyMotto="$COMP_MOTTO" \
               --set image.tag="$IMAGE_TAG" \
-              --atomic \
               --timeout 5m
             echo "Tenant deployment completed successfully."
 
@@ -58,7 +83,7 @@ jobs:
           uses: ./.github/actions/run-system-tests
           with:
             test_type: smoke 
-            target_url: https://${{ github.event.client_payload.company_id }}.sas-product.internal
+            target_url: https://${{ github.event.client_payload.company_id || inputs.company_id }}.sas-product.com
 
         - name: Rollback Tenant on Failure
           if: failure()
@@ -83,5 +108,9 @@ jobs:
             fi
         
         - name: Report Customer target_url
+          if: success()
           run: |
-            echo "Customer target URL: https://${{ github.event.client_payload.company_id }}.sas-product.internal"
+            TENANT_ID="${{ github.event.client_payload.company_id || inputs.company_id }}"
+            LOGIN_URL="https://$TENANT_ID.sas-product.com/login"
+            echo "✅ Tenant $TENANT_ID successfully onboarded/updated!"
+            echo "Customer Welcome & Login URL: $LOGIN_URL"

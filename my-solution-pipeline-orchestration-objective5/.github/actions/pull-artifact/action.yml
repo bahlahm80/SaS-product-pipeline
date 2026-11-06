@@ -1,0 +1,62 @@
+name: 'Pull Artifact from Artifactory and push to Local ECR'
+description: 'Pulls an immutable image tag from central Artifactory and pushes it to local AWS ECR'
+inputs:
+  tag:
+    description: 'Image tag to promote, e.g. v1.2.3 or a commit SHA'
+    required: true
+  repository_name:
+    description: 'ECR repository name in this environment, e.g. sas-product-staging'
+    required: true
+  aws_region:
+    description: 'AWS region, e.g. us-east-1'
+    required: false
+    default: 'us-east-1'
+  artifactory_url:
+    description: 'Central Artifactory image, e.g. artifactory.internal/sas-product'
+    required: true
+  artifactory_user:
+    description: 'Artifactory username'
+    required: true
+  artifactory_token:
+    description: 'Artifactory token'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Resolve AWS Account ID
+      id: account
+      shell: bash
+      run: |
+        # This runs AFTER configure-aws-credentials in the workflow,
+        # so it uses that job's credentials. In prod it returns
+        # 333333333333, in staging 222222222222, in dev 111111111111.
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        REGISTRY="${ACCOUNT_ID}.dkr.ecr.${{ inputs.aws_region }}.amazonaws.com"
+        echo "account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+        echo "registry=$REGISTRY" >> "$GITHUB_OUTPUT"
+        echo "Resolved ECR registry: $REGISTRY"
+
+    - name: Log in to Central Artifactory
+      shell: bash
+      run: |
+        echo "${{ inputs.artifactory_token }}" | docker login --username "${{ inputs.artifactory_user }}" --password-stdin $(echo "${{ inputs.artifactory_url }}" | cut -d'/' -f1)
+
+    - name: Log in to Local AWS ECR
+      shell: bash
+      run: |
+        aws ecr get-login-password --region ${{ inputs.aws_region }} \
+          | docker login --username AWS --password-stdin ${{ steps.account.outputs.registry }}
+
+    - name: Pull, Re-tag, and Push Image
+      shell: bash
+      run: |
+        SOURCE_IMAGE="${{ inputs.artifactory_url }}:${{ inputs.tag }}"
+        TARGET_IMAGE="${{ steps.account.outputs.registry }}/${{ inputs.repository_name }}:${{ inputs.tag }}""
+
+        echo "Pulling verified artifact from: $SOURCE_IMAGE"
+        docker pull $SOURCE_IMAGE
+
+        echo "Tagging and pushing to local ECR: $TARGET_IMAGE"
+        docker tag $SOURCE_IMAGE $TARGET_IMAGE
+        docker push $TARGET_IMAGE

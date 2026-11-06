@@ -60,6 +60,24 @@ jobs:
           echo "ERROR: Dev integration tests failed! Flagging build."
           exit 1
 
+      - name: Publish Artifact to Central Artifactory
+        if: success()
+        env:
+          ARTIFACTORY_URL: 'artifactory.internal/sas-product'
+          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
+          ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
+        run: |
+          TAG="${{ steps.prep.outputs.tag }}"
+          DEV_IMAGE="111111111111.dkr.ecr.us-east-1.amazonaws.com/sas-product-dev:$TAG"
+          CENTRAL_IMAGE="$ARTIFACTORY_URL:$TAG"
+
+          echo "Dev integration tests passed! Publishing verified image to Artifactory..."
+          echo "$ARTIFACTORY_TOKEN" | docker login --username "$ARTIFACTORY_USER" --password-stdin artifactory.internal
+
+          docker pull $DEV_IMAGE
+          docker tag $DEV_IMAGE $CENTRAL_IMAGE
+          docker push $CENTRAL_IMAGE
+
       - name: Trigger Staging Deployment on System Test Success
         if: success()
         env:
@@ -70,5 +88,4 @@ jobs:
           
           gh workflow run staging-deploy.yml \
             --ref master \
-            -f image_tag="$IMAGE_TAG" \
-            -f auto_triggered="true"
+            -f image_tag="$IMAGE_TAG"

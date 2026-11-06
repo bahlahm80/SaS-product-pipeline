@@ -3,8 +3,8 @@ name: Staging CD Pipeline
 on:
   workflow_dispatch:
     inputs:
-      image_tag::
-        description: 'ECR Image Tag to Deploy (e.g. Git Commit SHA or Release Tag)'
+      image_tag:
+        description: 'ECR/Artifactory Image Tag to Deploy (e.g. Git Commit SHA or Release Tag)'
         required: true
         default: 'latest'
 
@@ -15,10 +15,22 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+      
+      - name: Authenticate with Staging AWS Account
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::222222222222:role/GitHubActionsStagingRole
 
-      - name: Authenticate with AWS & EKS
-        run: |
-          echo "Setting up AWS credentials and EKS cluster context for staging..."
+      - name: Pull and Push Artifact to Staging ECR
+        uses: ./.github/actions/pull-artifact
+        with:
+          tag: ${{ inputs.image_tag }}
+          artifactory_url: 'artifactory.internal/sas-product'
+          artifactory_user: ${{ secrets.ARTIFACTORY_USER }}
+          artifactory_token: ${{ secrets.ARTIFACTORY_TOKEN }}
+          local_ecr_registry: '222222222222.dkr.ecr.us-east-1.amazonaws.com/sas-product-staging'
+          aws_region: 'us-east-1'
 
       - name: Deploy to Staging via Terraform/Helm
         run: |

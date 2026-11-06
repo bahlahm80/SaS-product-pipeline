@@ -4,6 +4,10 @@ inputs:
   tag:
     description: 'Tag for the container image'
     required: true
+  push:
+    description: "'true' to push to ECR (dev), 'false' to build locally only (PR)"
+    required: false
+    default: 'false'
   ecr_registry:
     description: 'AWS ECR Registry URI'
     required: true
@@ -11,10 +15,21 @@ inputs:
     description: 'ECR Repository Name'
     required: true
     default: 'sas-product'
+  aws_region:
+    description: 'AWS region for ECR login, e.g. us-east-1'
+    required: false
+    default: 'us-east-1'
 
 runs:
   using: "composite"
   steps:
+    - name: Log in to ECR
+      if: ${{ inputs.push == 'true'}}
+      shell: bash
+      run: |
+        aws ecr get-login-password --region ${{ inputs.aws_region }} \
+          | docker login --username AWS --password-stdin ${{ inputs.ecr_registry }}
+          
     - name: Build and Push Image to ECR
       shell: bash
       run: |
