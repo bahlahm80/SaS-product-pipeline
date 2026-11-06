@@ -1,40 +1,59 @@
 name: Staging CD Pipeline
 
 on:
-  push:
-    branches: [ master ]
   workflow_dispatch:
     inputs:
-      target_env:
-        description: 'Target Environment to Deploy'
+      image_tag::
+        description: 'ECR Image Tag to Deploy (e.g. Git Commit SHA or Release Tag)'
         required: true
-        default: 'staging'
-        type: choice
-        options:
-          - staging
+        default: 'latest'
 
-  jobs:
+jobs:
   deploy-staging:
     environment: staging
-    if: github.event_name == 'workflow_dispatch' && inputs.target_env == 'staging'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Authenticate with AWS & EKS
+        run: |
+          echo "Setting up AWS credentials and EKS cluster context for staging..."
+
       - name: Deploy to Staging via Terraform/Helm
         run: |
-          echo "Deploying to Staging environment..."
-          # terraform apply -var-file=environments/staging.tfvars
+          echo "Deploying image tag ${{ inputs.image_tag }} to Staging environment..."
+          # terraform apply -var-file=environments/staging.tfvars -var="image_tag=${{ inputs.image_tag }}"
+          
+          # Example Helm upgrade for staging
+          helm upgrade --install staging-app ./helm/app-template \
+            --namespace staging \
+            --create-namespace \
+            --set image.tag="${{ inputs.image_tag }}" \
+            --timeout 5m
 
       - name: Run Staging Integration Tests
         uses: ./.github/actions/run-system-tests
         with:
-          test_type: smoke 
-          target_url: https://staging.sas-product.internal
-          
+          test_type: 'smoke'
+          target_url: 'https://staging.sas-product.internal'
+            
       - name: Verify Staging Gate for Production
         if: failure()
         run: |
-          echo "STAGING FAILURE: Production deployment lock engaged."
+          RELEASE_NAME="staging-app"
+          NAMESPACE="staging"
+
+          echo "⚠️ Staging integration tests or deployment failed! Rolling back..."
+
+          REVISION_COUNT=$(helm history $RELEASE_NAME -n $NAMESPACE --output json 2>/dev/null | jq '. | length' || echo 0)
+
+          if [ "$REVISION_COUNT" -gt 1 ]; then
+            echo "🔄 Rolling back Staging release to previous working revision..."
+            helm rollback $RELEASE_NAME -n $NAMESPACE
+          else
+            echo "🧹 No previous revision found. Cleaning up failed deployment..."
+            helm uninstall $RELEASE_NAME -n $NAMESPACE --wait || true
+          fi
+          
           exit 1

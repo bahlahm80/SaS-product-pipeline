@@ -2,18 +2,25 @@ name: 'Build Product Artifact'
 description: 'Builds the SaS application artifact'
 inputs:
   tag:
-    description: 'Docker image tag'
+    description: 'Tag for the container image'
     required: true
-    default: 'latest'
+  ecr_registry:
+    description: 'AWS ECR Registry URI'
+    required: true
+  repository_name:
+    description: 'ECR Repository Name'
+    required: true
+    default: 'sas-product'
 
 runs:
   using: "composite"
   steps:
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build Docker Image
+    - name: Build and Push Image to ECR
       shell: bash
       run: |
-        echo "Building docker image with tag: ${{ inputs.tag }}"
-        docker build -t sas-product:${{ inputs.tag }} .
+        IMAGE_URI="${{ inputs.ecr_registry }}/${{ inputs.repository_name }}:${{ inputs.image_tag }}"
+        echo "Building image: ${IMAGE_URI}"
+        docker build -t ${IMAGE_URI} .
+        
+        echo "Pushing image to ECR..."
+        docker push ${IMAGE_URI}

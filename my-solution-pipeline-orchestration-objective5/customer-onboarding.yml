@@ -17,6 +17,10 @@ on:
         description: 'Customer Motto'
         required: true
         default: 'Excellence in Scale'
+      image_tag:
+        description: 'Prod-approved image tag to deploy, e.g. v1.2.3. Must exist: the Provision step reads inputs.image_tag, so it must be defined here.'
+        required: true
+        default: 'v1.2.3'
 
 jobs:
     onboard-tenant:
@@ -57,24 +61,26 @@ jobs:
             target_url: https://${{ github.event.client_payload.company_id }}.sas-product.internal
 
         - name: Rollback Tenant on Failure
-        if: failure()
-        run: |
-          TENANT_ID="${{ github.event.client_payload.company_id || inputs.company_id }}"
-          echo "⚠️ Deployment or smoke test failed for $TENANT_ID. Evaluating rollback strategy..."
+          if: failure()
+          run: |
+            TENANT_ID="${{ github.event.client_payload.company_id || inputs.company_id }}"
+            RELEASE_NAME="tenant-$TENANT_ID"
+            NAMESPACE="tenant-$TENANT_ID"
+            echo "⚠️ Deployment or smoke test failed for $TENANT_ID. Evaluating rollback strategy..."
 
-          # Check how many revisions exist for this Helm release
-          REVISION_COUNT=$(helm history $RELEASE_NAME -n $NAMESPACE --output json 2>/dev/null | jq '. | length' || echo 0)
+            # Check how many revisions exist for this Helm release
+            REVISION_COUNT=$(helm history $RELEASE_NAME -n $NAMESPACE --output json 2>/dev/null | jq '. | length' || echo 0)
 
-          if [ "$REVISION_COUNT" -gt 1 ]; then
-            echo "🔄 Existing tenant update detected (Revisions: $REVISION_COUNT). Rolling back to last good revision..."
-            helm rollback $RELEASE_NAME -n $NAMESPACE
-            echo "✅ Successfully rolled back $RELEASE_NAME to previous working state."
-          else
-            echo "🧹 Brand-new tenant deployment detected (Revisions: $REVISION_COUNT). Performing complete tear-down..."
-            helm uninstall $RELEASE_NAME -n $NAMESPACE --wait || true
-            kubectl delete namespace $NAMESPACE --ignore-not-found=true
-            echo "✅ Complete cleanup finished for failed fresh tenant $TENANT_ID."
-          fi
+            if [ "$REVISION_COUNT" -gt 1 ]; then
+              echo "🔄 Existing tenant update detected (Revisions: $REVISION_COUNT). Rolling back to last good revision..."
+              helm rollback tenant-$TENANT_ID -n tenant-$TENANT_ID
+              echo "✅ Successfully rolled back $RELEASE_NAME to previous working state."
+            else
+              echo "🧹 Brand-new tenant deployment detected (Revisions: $REVISION_COUNT). Performing complete tear-down..."
+              helm uninstall $RELEASE_NAME -n $NAMESPACE --wait || true
+              kubectl delete namespace $NAMESPACE --ignore-not-found=true
+              echo "✅ Complete cleanup finished for failed fresh tenant $TENANT_ID."
+            fi
         
         - name: Report Customer target_url
           run: |
