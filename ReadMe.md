@@ -4,7 +4,7 @@ This repository contains the architecture design and CI/CD delivery pipeline for
 ## 1. Executive Summary & Selected Core Objectives
 To deliver a scalable, automated, and secure delivery pipeline, this architecture focuses deeply on Objectives 4, 5, and 9:
 
-Objective 5: Pipeline Orchestration
+### Objective 5: Pipeline Orchestration - DONE
 
 Implements a 4-tier CI/CD promotion flow using GitHub Actions.
 
@@ -12,13 +12,13 @@ Leverages custom composite actions (./actions/build-docker and ./actions/run-sys
 
 Gated deployments ensure integration tests pass before promotion to subsequent environments.
 
-Objective 9: Infrastructure as Code (IaC)
+### Objective 9: Infrastructure as Code (IaC)
 
 Uses Terraform to declaratively manage Kubernetes namespaces, ingress controllers, RBAC, and tenant configurations across three isolated environments (dev, staging, and prod).
 
 Standardizes tenant onboarding via parameter-driven .tfvars definitions.
 
-Objective 4: Scalable Web Serving
+### Objective 4: Scalable Web Serving
 
 Provides dynamic multi-tenant web application provisioning on Kubernetes (EKS).
 

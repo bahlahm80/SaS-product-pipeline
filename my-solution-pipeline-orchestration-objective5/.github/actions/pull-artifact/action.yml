@@ -52,7 +52,7 @@ runs:
       shell: bash
       run: |
         SOURCE_IMAGE="${{ inputs.artifactory_url }}:${{ inputs.tag }}"
-        TARGET_IMAGE="${{ steps.account.outputs.registry }}/${{ inputs.repository_name }}:${{ inputs.tag }}""
+        TARGET_IMAGE="${{ steps.account.outputs.registry }}/${{ inputs.repository_name }}:${{ inputs.tag }}"
 
         echo "Pulling verified artifact from: $SOURCE_IMAGE"
         docker pull $SOURCE_IMAGE
