@@ -1,10 +1,13 @@
 # Objective 4 — Scalable Web Serving
 
 ## Problem Statement
+
 Allow each customer to host their own website, for 10–100 customers, automated and reliable.  Also consider future customer growth up to 1000 customers. 
 
 ## Solution
+
 We will need to consider and ask the following questions:
+
 - Is Kubernete cluster large enough to hold all customers?
 - Can one customer use up all resources without a limit?
 - As the number of customers grow, do we see performance degradation?
@@ -13,11 +16,15 @@ We will need to consider and ask the following questions:
 
 To answer the questions, we need to implement a scalable web serving solution and make sure we meet all the criterias.
 Most of the solution is already done as part of the Infrastructure as code objective in the terraform project(Objective 9) such as 
- - Setting auto-scaling policy based on the cpu and memory usage.
- - Setting resource-quota per customer
- - Made sure we are not redeploying existing customers when new customer onboards
 
-### Cluster Sizing
+- Setting auto-scaling policy based on the cpu and memory usage.
+- Setting resource-quota per customer
+- Made sure we are not redeploying existing customers when new customer onboards
+
+
+
+### Cluster Sizing and Autoscaler
+
 This is at the global level setting the kubernetes cluster with right sizing to determine make sure we can host 100 customers.
 The sizing should be done to hold up to 1000 customers in case we need to go beyond 100 but the sizing can be updated so we can start with 100 customers and we 
 can upsize it as we get close to 100 customers and also from monitoring the traffic as we onboard customers.
@@ -34,6 +41,7 @@ capacity has to grow too, and Cluster Autoscaler is how that
 happens in EKS. I do not claim it is installed here.
 
 ### Pod Sizing - Vertical Scaling - Should be fixed based on the performance tests
+
 This is done at the customer level.  Pods running on the Clusters per customer will have different requirements.  We want to optimize the performance for each customer
 and scale so that it serves all customers onboarding happily.
 
@@ -61,7 +69,8 @@ test showed it needed more headroom. That is the same
 reasoning here: start small, measure, raise the limit when
 the load test says so — do not guess a large size up front.
 
-### Pod auto-scaling policy - Horizontal Pod Autoscaler 
+### Pod auto-scaling policy - Horizontal Pod Autoscaler
+
 This is at customer level.  As each customer uses the sas product, we want to make sure we can handle the customer use traffic.  When traffic increases and cpu_usage and memory usage goes beyond threshold at 70% for both, we would automatically spin up another pod to serve more traffic.  And vice versa we scale down when cpu-usage and memroy usage goes below 20% to save resources and minimize the cost.
 
 Numbers in this project:
@@ -81,6 +90,7 @@ Kubernetes HPA experience — I am claiming the autoscaling
 pattern, and applying it in Kubernetes for the first time here.
 
 ### Resource Quota per customer
+
 We set this resource quota so that not one customer hogs over the resources. 
 
 Where it is built:
@@ -92,6 +102,7 @@ quota, but it cannot take CPU or memory from the other 99
 customers' namespaces.
 
 ### Routing per customer - Ingress
+
 What: one host per customer, routed by the Ingress to
 that customer's Service, and only to pods in that customer's
 namespace.
@@ -106,9 +117,8 @@ resources/route53.tf — a hosted zone plus a wildcard
 record pointing at the ALB created by the AWS Load Balancer
 Controller.
 
-
-
 # REVIEW these later
+
 How a new customer gets the software
 This is Objective 1 (Input Management) and Objective 2
 (Data Deployment) working with Objectives 5 and 9, not
@@ -129,7 +139,7 @@ Terraform applies from the production environment folder,
    for_each creates only that customer's namespace,
    ConfigMap, Deployment, Service, Ingress, and HPA.
    The other customers are already in state and unchanged.
-A smoke check hits https://<company>.sas-product.com,
+A smoke check hits https://.sas-product.com,
    expects 200, and checks the page contains the company
    name and motto. Then the URL is reported to the customer.
 What I deliberately did not build

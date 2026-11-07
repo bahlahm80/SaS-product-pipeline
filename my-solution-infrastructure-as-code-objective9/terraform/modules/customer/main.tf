@@ -111,6 +111,7 @@ resource "kubernetes_service" "web" {
     }
 }
 
+# (Objective 4): ingress controller
 resource "kubernetes_ingress_v1" "web" {
     metadata {
         name        = "customer-${var.customer_slug}-web"
@@ -159,5 +160,41 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "web" {
                 }
             }
         }
+        metric {
+            type = "Resource"
+            resource {
+                name = "memory"
+                target {
+                    type                = "Utilization"
+                    average_utilization = 80
+                }
+            }
+        }
+        behavior {
+            scale_up {
+                stabilization_window_seconds    = 0
+                select_policy                   = "Max"
+                policy {
+                    type                        = "Pods"
+                    value                       = 2
+                    period_seconds              = 60
+                }
+            }
+            scale_down {
+                stabilization_window_seconds    = 300
+                select_policy                   = "Min"
+                policy {
+                    type                        = "Percent"
+                    value                       = 50
+                    period_seconds              = 60
+                }
+                policy {
+                    type                        = "Pods"
+                    value                       = 1
+                    period_seconds              = 60
+                }
+            }
+        }
+
     }
 }

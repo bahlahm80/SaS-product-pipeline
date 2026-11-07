@@ -90,3 +90,64 @@ resource "aws_iam_policy" "alb_controller" {
   path        = "/"
   policy      = data.aws_iam_policy_document.alb_controller.json
 }
+
+data "aws_iam_policy_document" "cluster_autoscaler_assume_role" {
+    statement {
+      effect = "Allow"
+      actions = ["sts:AssumeRoleWithWebIdentity"]
+
+      principals {
+        type  = "Federated"
+        identifiers = [module.eks.oidc_provider_arn]
+      }
+
+      condition {
+        test = "StringEquals"
+        variable = "${module.eks.oidc_provider}:sub"
+        values = ["system:serviceaccount:kube-system:cluster-autoscaler"]
+      }
+    }
+}
+
+resource "aws_iam_role" "cluster_autoscaler" {
+  name = "cluster-autoscaler-${var.environment}Role-${var.aws_region}"
+
+  assume_role_policy = data.aws_iam_policy_document.cluster_autoscaler_assume_role.json
+  tags = {
+    Environment = var.environment
+  }
+}
+
+data "aws_iam_policy_document" "cluster_autoscaler" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "autoscaling:DescribeAutoScalingGroups",
+      "autoscaling:DescribeAutoScalingInstances",
+      "autoscaling:DescribeLaunchConfigurations",
+      "autoscaling:DescribeScalingActivities",
+      "autoscaling:DescribeTags",
+      "autoscaling:SetDesiredCapacity",
+      "autoscaling:TerminateInstanceInAutoScalingGroup",
+      "ec2:DescribeImages",
+      "ec2:DescribeInstanceTypes",
+      "ec2:DescribeLaunchTemplateVersions",
+      "ec2:DescribeSecurityGroups",
+      "ec2:DescribeSubnets",
+      "ec2:DescribeVolumes",
+      "eks:DescribeNodegroup",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "cluster_autoscaler" {
+  name        = "cluster-autoscaler-${var.environment}"
+  description = "IAM policy required for the EKS cluster autoscaling"
+  policy      = data.aws_iam_policy_document.cluster_autoscaler.json
+}
+
+resource "aws_iam_role_policy_attachment" "cluster_autoscaler" {
+  role            = aws_iam_role.cluster_autoscaler.name
+  policy_arn      = aws_iam_policy.cluster_autoscaler.arn
+}
