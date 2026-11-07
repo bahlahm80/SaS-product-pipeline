@@ -63,20 +63,6 @@ variable "container_memory_limit" {
   default     = "256Mi"
 }
 
-variable "customers" {
-  description = "One entry per customer.  Adding a customer = adding one entry here."
-  type        = map(object({
-    company_name  = string
-    motto         = string
-    host          = string
-    image_tag     = optional(string)
-    replicas      = optional(number, 2)
-    min_replicas  = optional(number, 2)
-    max_replicas  = optional(number, 5)
-  }))
-  default     = {}
-}
-
 variable "image_tag" {
   description = "Promoted, prod-approved image tag. Must be a valid version number e.g v1.0.0"
   type        = string

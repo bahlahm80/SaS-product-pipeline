@@ -43,7 +43,7 @@ module "sas" {
     node_desired_size       = 3
 
     image_tag               = "v1.0.0"
-    customers               = [""]
+    customers               = []
 }
 
 output "vpc_id" {

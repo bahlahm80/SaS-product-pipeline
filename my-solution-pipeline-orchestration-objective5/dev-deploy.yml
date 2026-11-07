@@ -31,18 +31,23 @@ jobs:
           echo "Using deployment image tag: $TAG"
 
       - name: Build and Push Image to ECR (Dev)
-        uses: ./.github/actions/build-artifact
+        uses: ./my-solution-pipeline-orchestration-objective5/.github/actions/build-artifact
         with:
           tag: ${{ steps.prep.outputs.tag }}
 
-      - name: Apply Terraform / Helm for Dev
+      - name: Provision customer namespace/infrastructure with Terraform in dev
+        run: |
+          cd my-solution-infrastructure-as-code-objective9/terraform/environments/dev
+          terraform init
+          terraform apply -auto-approve -target='module.customer["$TENANT_ID"]'
+
+      - name: Deploy via Helm for Dev
         run: |
           TAG="${{ steps.prep.outputs.tag }}"
           echo "Deploying infrastructure & application to Dev environment..."
-          # terraform apply -var-file=environments/dev.tfvars -var="image_tag=${{ steps.prep.outputs.tag }}"
           
           # 2. Helm deploys the application container using the immutable image tag
-          helm upgrade --install dev-app ./helm/tenant-template \
+          helm upgrade --install dev-app ./my-solution-pipeline-orchestration-objective5/helm/tenant-template \
           --namespace dev \
           --create-namespace \
           --set companyName="Dev Test" \
@@ -52,7 +57,7 @@ jobs:
           --timeout 5m
 
       - name: Run Post-Deploy Integration Tests
-        uses: ./.github/actions/run-system-tests
+        uses: ./my-solution-pipeline-orchestration-objective5/.github/actions/run-system-tests
         with:
           test_type: 'full' 
           target_url: 'https://dev.sas-product.internal'

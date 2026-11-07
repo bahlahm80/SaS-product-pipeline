@@ -23,7 +23,7 @@ jobs:
           role-to-assume: arn:aws:iam::222222222222:role/GitHubActionsStagingRole
 
       - name: Pull and Push Artifact to Staging ECR
-        uses: ./.github/actions/pull-artifact
+        uses: ./my-solution-pipeline-orchestration-objective5/.github/actions/pull-artifact
         with:
           tag: ${{ inputs.image_tag }}
           artifactory_url: 'artifactory.internal/sas-product'
@@ -32,13 +32,19 @@ jobs:
           local_ecr_registry: '222222222222.dkr.ecr.us-east-1.amazonaws.com/sas-product-staging'
           aws_region: 'us-east-1'
 
+      - name: Provision customer namespace/infrastructure with Terraform in Staging
+        run: |
+          cd my-solution-infrastructure-as-code-objective9/terraform/environments/staging
+          terraform init
+          terraform apply -auto-approve -target='module.customer["$TENANT_ID"]'
+
       - name: Deploy to Staging via Terraform/Helm
         run: |
-          echo "Deploying image tag ${{ inputs.image_tag }} to Staging environment..."
-          # terraform apply -var-file=environments/staging.tfvars -var="image_tag=${{ inputs.image_tag }}"
+          TAG="${{ inputs.image_tag }}"
+          echo "Deploying image tag $TAG to Staging environment..."
           
-          # Example Helm upgrade for staging
-          helm upgrade --install dev-app ./helm/tenant-template \
+          # Helm upgrade for staging
+          helm upgrade --install staging-app ./my-solution-pipeline-orchestration-objective5/helm/tenant-template \
           --namespace staging \
           --create-namespace \
           --set companyName="Staging Test Company" \
@@ -49,7 +55,7 @@ jobs:
 
 
       - name: Run Staging Integration Tests
-        uses: ./.github/actions/run-system-tests
+        uses: ./my-solution-pipeline-orchestration-objective5/.github/actions/run-system-tests
         with:
           test_type: 'smoke'
           target_url: 'https://staging.sas-product.internal'
