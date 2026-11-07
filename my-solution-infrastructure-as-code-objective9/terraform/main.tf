@@ -14,15 +14,8 @@ module "infrastructure" {
 }
 
 module "customer" {
-  source                = "./modules/customer"
-  for_each              = var.customers
+  source   = "./modules/customer"
+  for_each = var.customers
 
-  customer_slug         = each.key
-  company_name          = each.value.company_name
-  motto                 = each.value.motto
-  host                  = each.value.host
-  image_tag             = coalesce(each.value.image_tag, var.image_tag)
-  replicas              = each.value.replicas
-  min_replicas          = each.value.min_replicas
-  max_replicas          = each.value.max_replicas
+  customer_slug = each.value
 }

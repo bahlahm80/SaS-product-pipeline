@@ -25,20 +25,9 @@ Most of the solution is already done as part of the Infrastructure as code objec
 
 ### Cluster Sizing and Autoscaler
 
-This is at the global level setting the kubernetes cluster with right sizing to determine make sure we can host 100 customers.
-The sizing should be done to hold up to 1000 customers in case we need to go beyond 100 but the sizing can be updated so we can start with 100 customers and we 
-can upsize it as we get close to 100 customers and also from monitoring the traffic as we onboard customers.
+This is at the global level setting the kubernetes cluster with right sizing to determine make sure we can host 100 customers. The sizing should be done to hold up to 1000 customers in case we need to go beyond 100 but the sizing can be updated so we can start with 100 customers and we  can upsize it as we get close to 100 customers and also from monitoring the traffic as we onboard customers.
 
-What is built: EKS managed node groups, with per-environment
-minimum / maximum / desired size, in
-resources/eks.tf — module "eks", using
-terraform-aws-modules/eks/aws. The node group scales
-within its min/max as pods are scheduled.
-What is NOT built: Cluster Autoscaler as a Terraform
-resource. It is a discussion point, not a built resource in
-this project: as the tenant count grows from 10 to 100, node
-capacity has to grow too, and Cluster Autoscaler is how that
-happens in EKS. I do not claim it is installed here.
+What is built: EKS managed node groups, with per-environment minimum / maximum / desired size, in resources/eks.tf — module "eks", using terraform-aws-modules/eks/aws. The node group scalesEx within its min/max as pods are scheduled. What is NOT built: Cluster Autoscaler as a Terraform resource. It is a discussion point, not a built resource in this project: as the tenant count grows from 10 to 100, node capacity has to grow too, and Cluster Autoscaler is how that happens in EKS. I do not claim it is installed here.
 
 ### Pod Sizing - Vertical Scaling - Should be fixed based on the performance tests
 
@@ -106,8 +95,8 @@ customers' namespaces.
 What: one host per customer, routed by the Ingress to
 that customer's Service, and only to pods in that customer's
 namespace.
-Example: acme.sas-product.com → Service
-customer-acme-web → pods in namespace customer-acme.
+Example: test-company.sas-product.com → Service
+customer-test-company-web → pods in namespace customer-test-company.
 Where it is built:
 modules/customer/main.tf —
 resource "kubernetes_ingress_v1" "web", with

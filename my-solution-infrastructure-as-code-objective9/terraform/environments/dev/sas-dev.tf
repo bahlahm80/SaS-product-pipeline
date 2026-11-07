@@ -43,13 +43,7 @@ module "sas" {
     node_desired_size       = 2
 
     image_tag               = "v1.0.0"
-    customers               = {
-        acme-test               = {
-            company_name        = "Test Company"
-            motto               = "Testing Company in Dev at scale"
-            host                = "test-company.sas-product.internal"
-        }
-    }
+    customers               = ["test-company"]
 }
 
 output "vpc_id" {

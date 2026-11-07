@@ -64,17 +64,9 @@ variable "container_memory_limit" {
 }
 
 variable "customers" {
-  description = "One entry per customer.  Adding a customer = adding one entry here."
-  type        = map(object({
-    company_name  = string
-    motto         = string
-    host          = string
-    image_tag     = optional(string)
-    replicas      = optional(number, 2)
-    min_replicas  = optional(number, 2)
-    max_replicas  = optional(number, 5)
-  }))
-  default     = {}
+  description = "Customer slugs. One namespace + ResourceQuota per slug. Adding a customer = adding one slug here. Company name, motto, host, and image tag are app data — they go to Helm, not Terraform."
+  type        = set(string)
+  default     = []
 }
 
 variable "image_tag" {

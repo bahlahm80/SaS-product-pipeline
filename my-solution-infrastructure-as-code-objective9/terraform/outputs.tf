@@ -10,7 +10,7 @@ output "ecr_repository_url" {
   value = module.infrastructure.ecr_repository_url
 }
 
-output "customer_urls" {
-  description = "One URL per customer, from the customer module."
-  value = { for k, m in module.customer : k => m.url}
+output "customer_namespaces" {
+  description = "One namespace per customer, created by Terraform. URLs are owned by Helm / Ingress, not Terraform."
+  value       = { for k, m in module.customer : k => m.namespace }
 }

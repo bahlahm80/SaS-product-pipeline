@@ -1,0 +1,17 @@
+# Defaults. The workflow overrides these with --set.
+companyName: "Test Company"
+companyMotto: "We build things"
+host: "test-company.sas-product.com"
+image:
+  repository: "sas-product"
+  tag: "v1.0.0"
+replicas: 2
+minReplicas: 2
+maxReplicas: 5
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "256Mi"

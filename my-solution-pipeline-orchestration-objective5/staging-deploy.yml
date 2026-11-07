@@ -38,11 +38,15 @@ jobs:
           # terraform apply -var-file=environments/staging.tfvars -var="image_tag=${{ inputs.image_tag }}"
           
           # Example Helm upgrade for staging
-          helm upgrade --install staging-app ./helm/app-template \
-            --namespace staging \
-            --create-namespace \
-            --set image.tag="${{ inputs.image_tag }}" \
-            --timeout 5m
+          helm upgrade --install dev-app ./helm/tenant-template \
+          --namespace staging \
+          --create-namespace \
+          --set companyName="Staging Test Company" \
+          --set companyMotto="Staging environment" \
+          --set host="staging.sas-product.internal" \
+          --set image.tag="$TAG" \
+          --timeout 5m
+
 
       - name: Run Staging Integration Tests
         uses: ./.github/actions/run-system-tests
