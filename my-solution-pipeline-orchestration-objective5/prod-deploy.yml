@@ -93,7 +93,7 @@ jobs:
             --set companyName="${{ matrix.target.company_name }}" \
             --set companyMotto="${{ matrix.target.motto }}" \
             --set host="$SLUG.sas-product.com" \
-            --set image.tag="${{ client_payload.image_tag }}"
+            --set image.tag="${{ github.event.client_payload.image_tag || inputs.image_tag }}"
 
       - name: Smoke test this customer (welcome-page check)
         uses: ./my-solution-pipeline-orchestration-objective5/.github/actions/run-system-test
@@ -105,7 +105,7 @@ jobs:
         if: failure()
         run: |
           SLUG="${{ matrix.target.slug }}"
-          echo "::error title=Prod deploy failed for $SLUG::Customer=$SLUG, image_tag=${{ client_payload.image_tag }}, release=customer-$SLUG, namespace=customer-$SLUG, url=https://$SLUG.sas-product.com"
+          echo "::error title=Prod deploy failed for $SLUG::Customer=$SLUG, image_tag=${{ github.event.client_payload.image_tag || inputs.image_tag }}, release=customer-$SLUG, namespace=customer-$SLUG, url=https://$SLUG.sas-product.com"
 
           echo "::group::Helm status and history for $SLUG"
           helm status customer-$SLUG -n customer-$SLUG || true
@@ -122,7 +122,7 @@ jobs:
           {
             echo "## Prod deploy failed: $SLUG"
             echo "- Customer: $SLUG"
-            echo "- Image tag: ${{ inputs.image_tag }}"
+            echo "- Image tag: ${{ github.event.client_payload.image_tag || inputs.image_tag }}"
             echo "- Namespace / release: customer-$SLUG"
             echo "- Welcome URL: https://$SLUG.sas-product.com"
             echo "- See the Diagnose step above for helm status, pod describe, and logs."
