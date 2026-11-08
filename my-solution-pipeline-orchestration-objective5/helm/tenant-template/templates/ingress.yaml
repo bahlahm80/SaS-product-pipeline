@@ -3,7 +3,12 @@ kind: Ingress
 metadata:
   name: {{ .Release.Name }}-web
   namespace: {{ .Release.Namespace }}
+  annotations:
+    alb.ingress.kubernetes.io/group.name: "sas-product-shared-alb"
+    alb.ingress.kubernetes.io/scheme: "internet-facing"
+    alb.ingress.kubernetes.io/target-type: ip
 spec:
+  ingressClassName: alb
   rules:
     - host: {{ .Values.host | quote }}
       http:

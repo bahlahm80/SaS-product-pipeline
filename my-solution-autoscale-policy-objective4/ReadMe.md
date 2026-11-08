@@ -57,7 +57,7 @@ This is done at the customer pod level.  We want to serve each customer with hig
 When customer traffic increases, our product system must scale up or down to meet customer needs while optimizing the cost.
 As each customer uses the sas product, we want to make sure we can handle the customer use traffic.  Autoscaling policy is set using 
 cpu_usage and memory usage and when it goes beyond threshold at 70% for both, we would automatically spin up another pod to serve more traffic.  
-And vice versa we scale down when cpu-usage and memory usage goes below 20% to save resources and minimize the cost.
+And vice versa we scale down when cpu-usage and memory 5 minutes below target.
 
 Customer pod sizing should be done properly based on the customer profile(e.g size of the customer etc.)
 This is built here: [Pod sizing](./../my-solution-infrastructure-as-code-objective9/terraform/modules/customer/main.tf).
@@ -88,7 +88,7 @@ How do we solve the infinitely growing customers?  Do we monitor and come back a
 What is the node capacity?  Is that differ per cluster sizing? 
 
 ### Solution 3 - Customer Resource Quota
-This is built here: [Pod sizing](./../my-solution-infrastructure-as-code-objective9/terraform/modules/customer/main.tf).
+This is built here: [Pod sizing](./../my-solution-pipeline-orchestration-objective5/helm/tenant-template/templates/deployment.yaml).
 These are easily changed per customer.  Initially, we are setting request cpu and memory to be 2 and 2Gi with limits on are 4 and 4Gi and number of pods limited to 10
 Again, these can be set based on customer profile.  And this is to prevent one customer dominating resource and it is the noisy-neighbour protection.
 If one customer's site spikes, HPA can add pods for that customer up to its quota, but it cannot take CPU or memory from the other 99
@@ -98,7 +98,8 @@ Needs more understanding here.  cpu value of 2 or 4 are GHz? are these settings 
 
 ### Solution 4 - Routing per customer - Ingress
 One host per customer, routed by the Ingress to that customer's service and only to pods in that customer's namespace. 
-This is set here: [Ingress](./../my-solution-infrastructure-as-code-objective9/terraform/modules/customer/main.tf) 
+This is set here: [Ingress](./../my-solution-pipeline-orchestration-objective5/helm/tenant-template/templates/ingress.yaml) 
 host = var.host and resource "kubernetes_service" "web". DNS for *.sas-product.com set in here: [route53](./../my-solution-infrastructure-as-code-objective9/terraform/resources/route53.tf) which is a hosted zone plus a wildcard record pointing at the ALB created by the AWS Load Balancer Controller. 
 
-Needs more understanding here.  How is this solving scaling problem? 
+Ingress is the routing layer, not the scaling layer. It doesn't add pods — HPA and Cluster Autoscaler do that. What Ingress gives me is one entry point for 100 hosts, 
+host-based isolation per customer, and a routing layer that follows the Service endpoints automatically, so when HPA adds a pod, traffic reaches it without any routing change. That's how scaling stays operational at 100 customers instead of becoming a routing problem.

@@ -1,6 +1,9 @@
-# ALB is created by the AWS Load Balancer Controller when an Ingress appears.
-# Its IAM policy lives in iam.tf — referenced here as:
-#   aws_iam_policy.alb_controller.arn
-#
-# Next step: Helm release for the controller + IRSA role attachment
-# using that policy ARN.
+# ALB is NOT created by Terraform — it is created by the AWS Load
+# Balancer Controller when it sees an Ingress. Terraform only
+# provides the IAM policy (iam.tf: aws_iam_policy.alb_controller)
+# and the Route53 wildcard alias pointing at the ALB's DNS name.
+# NOT BUILT: the controller install itself (helm_release +
+# IRSA role attaching that policy) — same pattern as the
+# Cluster Autoscaler, which IS built. Route53's alb_dns_name
+# is empty until the first Ingress creates an ALB.
+# I am leaving this file just because I used ALB for my Orchy project at Workday behind ECS.
