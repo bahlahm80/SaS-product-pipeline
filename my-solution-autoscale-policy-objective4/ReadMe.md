@@ -56,7 +56,7 @@ The EKS cluster node auto-scaling policy is set here: [cluster-autoscaler](./../
 This is done at the customer pod level.  We want to serve each customer with high availability and consistent high performance.
 When customer traffic increases, our product system must scale up or down to meet customer needs while optimizing the cost.
 As each customer uses the sas product, we want to make sure we can handle the customer use traffic.  Autoscaling policy is set using 
-cpu_usage and memory usage and when it goes beyond threshold at 70% for both, we would automatically spin up another pod to serve more traffic.  
+cpu_usage and memory usage and when it goes beyond threshold at 70% CPU and 80% memory on requests, we would automatically spin up another pod to serve more traffic.  
 And vice versa we scale down when cpu-usage and memory 5 minutes below target.
 
 Customer pod sizing should be done properly based on the customer profile(e.g size of the customer etc.)
@@ -67,7 +67,7 @@ And the Horizontal Pod Autoscaling policy is setin the helm chart here: [HPA](./
 Numbers in this project:
  - Minimum replicas: 2 per customer (for high availability — one pod can fail or be restarted without the site going down)
  - Maximum replicas: 5 per customer
- - Target: 70% CPU utilization
+ - Target: 70% CPU utilization and 80% Memory utilization.
 
 How EKS cluster auto-scaling works with HPA, in order:
    1. Load rises → HPA adds pods, 2 → 5.
