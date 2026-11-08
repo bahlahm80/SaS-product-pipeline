@@ -35,12 +35,6 @@ jobs:
         with:
           tag: ${{ steps.prep.outputs.tag }}
 
-      - name: Provision customer namespace/infrastructure with Terraform in dev
-        run: |
-          cd my-solution-infrastructure-as-code-objective9/terraform/environments/dev
-          terraform init
-          terraform apply -auto-approve -target='module.customer["$TENANT_ID"]'
-
       - name: Deploy via Helm for Dev
         run: |
           TAG="${{ steps.prep.outputs.tag }}"

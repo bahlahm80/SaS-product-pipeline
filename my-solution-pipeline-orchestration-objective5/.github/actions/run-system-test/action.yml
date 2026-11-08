@@ -17,7 +17,7 @@ runs:
         # Example: yarn install && yarn runCypressTest
         # Or pytest depending on your stack
         pytest tests/integration/
-    - name: Run Production Smoke Test Suite (Prod)
+    - name: Run Production Smoke Test Suite (Staging and Prod)
       if: inputs.test_type == 'smoke'
       shell: bash
       run: |

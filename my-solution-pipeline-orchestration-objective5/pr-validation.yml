@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build PR Docker Image
-        uses: ./.github/actions/build-artifact
+        uses: ./my-solution-pipeline-orchestration-objective5/.github/actions/build-artifact
         with:
           tag: ${{ github.event.pull_request.head.sha }}
 
@@ -21,7 +21,7 @@ jobs:
           echo "Setting up ephemeral PR stack for testing..."
 
       - name: Run Integration Tests
-        uses: ./.github/actions/run-system-tests
+        uses: ./my-solution-pipeline-orchestration-objective5/.github/actions/run-system-test
         with:
           test_type: full 
           target_url: http://localhost:8080

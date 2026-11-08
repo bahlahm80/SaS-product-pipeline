@@ -1,0 +1,158 @@
+name: Prod Deploy (Prod)
+
+on:
+  repository_dispatch:
+    types: [customer-purchased, prod-version-ready]
+    # customer-purchased: payload {company_id, company_name, motto,
+    #   image_tag} — sent by the purchase system at purchase time.
+    #   The purchase system ALSO writes the DB row, at the same time.
+    #   Purchase system is also responsible to handle duplicate company names
+    # prod-version-ready: payload {image_tag} — sent automatically by
+    #   the release pipeline when a new version is prod-approved.
+    #   This is the automatic rollout trigger, not a manual run.
+    #   However, we may need to reconsider about automatic trigger and make it manual for flexibility
+    #   of choosing the right set of features to be included in that release. 
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'onboard = one new customer, rollout = all active customers'
+        required: true
+        default: 'rollout'
+        type: choice
+        options: [onboard, rollout]
+      company_id:
+        description: 'Onboard only: customer slug, e.g. acme'
+        required: false
+        default: ''
+      company_name:
+        description: 'Onboard only: customer company name'
+        required: false
+        default: ''
+      company_motto:
+        description: 'Onboard only: customer motto'
+        required: false
+        default: ''
+      image_tag:
+        description: 'Prod-approved image tag to deploy, e.g. v1.3.0'
+        required: true
+        default: 'v1.3.0'
+
+jobs:
+  resolve-targets:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.targets.outputs.targets }}
+      mode: ${{ steps.targets.outputs.mode }}
+    steps:
+      - name: Resolve targets (payload for onboard, DB for rollout)
+        id: targets
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "Onboard: build targets from github.event.client_payload / inputs — do NOT query the DB for customer info."
+          echo "Rollout: query the DB for all active customers (see SQL above)."
+
+ensure-infra:
+    needs: resolve-targets
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: prod-deploy-terraform
+      cancel-in-progress: false
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Ensure customer namespaces with Terraform (serial)
+        run: |
+          echo "For each target in needs.resolve-targets.outputs.targets:"
+          echo "  1. add slug to sas-production.tf if missing (pull --rebase, retry push)"
+          echo "  2. terraform init; terraform apply -auto-approve -target='module.customer[\"<slug>\"]'"
+          echo "Rollout targets: apply is a no-op, namespace already exists."
+
+deploy-customer:
+    needs: [resolve-targets, ensure-infra]
+    runs-on: ubuntu-latest
+    environment: production
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        target: ${{ fromJson(needs.resolve-targets.outputs.targets) }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Authenticate to AWS / EKS
+        run: echo "configure-aws-credentials (prod OIDC) + update-kubeconfig — copy from onboarding"
+      - name: Upgrade customer (zero downtime)
+        run: |
+          SLUG="${{ matrix.target.slug }}"
+          helm upgrade --install customer-$SLUG ./my-solution-pipeline-orchestration-objective5/helm/tenant-template \
+            --namespace customer-$SLUG \
+            --set companyName="${{ matrix.target.company_name }}" \
+            --set companyMotto="${{ matrix.target.motto }}" \
+            --set host="$SLUG.sas-product.com" \
+            --set image.tag="${{ inputs.image_tag }}"
+      - name: Smoke test this customer (welcome-page check)
+        uses: ./my-solution-pipeline-orchestration-objective5/.github/actions/run-system-test
+        with:
+          test_type: smoke
+          target_url: https://${{ matrix.target.slug }}.sas-product.com
+      - name: Roll back this customer only on failure
+        if: failure()
+        run: |
+          SLUG="${{ matrix.target.slug }}"
+          REVISION_COUNT=$(helm history customer-$SLUG -n customer-$SLUG --output json 2>/dev/null | jq '. | length' || echo 0)
+          if [ "$REVISION_COUNT" -gt 1 ]; then
+            # Existing customer: roll back to last good Helm revision.
+            helm rollback customer-$SLUG -n customer-$SLUG
+            echo "Customer update failed.  Rolling back to last good version."
+          else
+            # Fresh onboard only: tear down the app, then destroy the
+            # namespace WITH Terraform so cluster and state agree.
+            # NEVER kubectl delete namespace (drifts Terraform state).
+            helm uninstall customer-$SLUG -n customer-$SLUG --wait || true
+            cd my-solution-infrastructure-as-code-objective9/terraform/environments/production
+            terraform init
+            terraform destroy -auto-approve -target="module.customer[\"$SLUG\"]"
+            # Leave the slug in sas-production.tf and the DB row in
+            # place, so a retry / re-purchase re-applies cleanly.
+            echo "Customer Onboarding failed. Cleaning up the infrastructure. "
+          fi
+
+      - name: Diagnose failure and report error (catch)
+        if: failure()
+        run: |
+          SLUG="${{ matrix.target.slug }}"
+          echo "::error title=Prod deploy failed for $SLUG::Customer=$SLUG, image_tag=${{ inputs.image_tag }}, release=customer-$SLUG, namespace=customer-$SLUG, url=https://$SLUG.sas-product.com"
+
+          echo "::group::Helm status and history for $SLUG"
+          helm status customer-$SLUG -n customer-$SLUG || true
+          helm history customer-$SLUG -n customer-$SLUG || true
+          echo "::endgroup::"
+
+          echo "::group::Pods, events and logs for $SLUG"
+          kubectl get pods -n customer-$SLUG -o wide || true
+          kubectl describe pods -n customer-$SLUG || true
+          kubectl logs -l app=customer-$SLUG-web -n customer-$SLUG --tail=200 || true
+          curl -s -o /dev/null -w "Welcome URL HTTP %{http_code}\n" https://$SLUG.sas-product.com || true
+          echo "::endgroup::"
+
+          {
+            echo "## Prod deploy failed: $SLUG"
+            echo "- Customer: $SLUG"
+            echo "- Image tag: ${{ inputs.image_tag }}"
+            echo "- Namespace / release: customer-$SLUG"
+            echo "- Welcome URL: https://$SLUG.sas-product.com"
+            echo "- See the Diagnose step above for helm status, pod describe, and logs."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report welcome page
+        if: success()
+        run: |
+          SLUG="${{ matrix.target.slug }}"
+          WELCOME_PAGE_URL="https://$SLUG.sas-product.com"
+          LOGIN_PAGE_URL="https://$SLUG.sas-product.com/login" 
+          echo "Customer $SLUG successfully onboarded/updated!"
+          echo "Welcome page: $WELCOME_PAGE_URL"
+          echo "Loging page url: $LOGIN_PAGE_URL"   
+

@@ -32,12 +32,6 @@ jobs:
           local_ecr_registry: '222222222222.dkr.ecr.us-east-1.amazonaws.com/sas-product-staging'
           aws_region: 'us-east-1'
 
-      - name: Provision customer namespace/infrastructure with Terraform in Staging
-        run: |
-          cd my-solution-infrastructure-as-code-objective9/terraform/environments/staging
-          terraform init
-          terraform apply -auto-approve -target='module.customer["$TENANT_ID"]'
-
       - name: Deploy to Staging via Terraform/Helm
         run: |
           TAG="${{ inputs.image_tag }}"

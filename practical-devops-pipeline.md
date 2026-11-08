@@ -21,13 +21,15 @@ welcome screen that displays:
 - Solution should accommodate customer-specific data
 - Consider how this scales as your customer base grows
 
+
+
 ## What We're Looking For
 
 We want to see your DevOps thinking and problem-solving approach. You should:
 
 - **Select 2-3 objectives** from the list below that interest you most
 - **Create a script/solution** in any language you prefer (bash, python, groovy,
-  yaml, etc.)
+yaml, etc.)
 - **Demonstrate your understanding** of the chosen concepts
 - **Document your approach** and reasoning
 
@@ -108,6 +110,8 @@ Create a folder/file structure that demonstrates your chosen objectives. For exa
 - Documentation explaining your approach
 - Any configuration files or templates needed
 
+
+
 ## Notes Section
 
 *Use this space as your scratch pad for ideas, architecture diagrams (ASCII art
@@ -115,10 +119,35 @@ welcome!), or planning notes.*
 
 ---
 
+
+
 ### Planning Notes
 
 ```text
 Add your thoughts here...
+Infrastructure as Code:
+- Kubernetes cluster node needed for pods
+- Need to support 10 - 100+ customers.  Autoscale policy needs to be set. 
+- Need Load balancer in front of the customer pods to direct traffic for performance optimization. 
+- Need Queue??  as part of this or part of objective 1 or 2.  Should this be part of infrastructure? 
+- Need ECR to store the sas product artifact for deployment
+- Need cloudwatch for logging
+- Need securtiy groups and VPNs for secured customer networking environment
+- Need ssm just in case sas product needs some secrets to run the application. 
+
+CI/CD pipeline Ideas:
+- How do we handle multiple customer purchases/onboarding?  Can we run the onboarding deployment in parallel? 
+- How do we handle software updates to existing customers who already purchased the sas product? 
+- How do we ensure high quality so that once customer purchases the sas product, they get the high quality product?
+- What happens if deployment has issue?  We should rollback to the last good version. 
+- What if onboarding deployment has issues? 
+
+Scalable Web Serving:
+- How do we support one customer? Pod sizing and autoscale policy for the pod.
+- How do we support multiple customers more than 100?  Cluster sizing and autoscale policy for the cluster. 
+
+
+
 
 Customer Data Flow:
 - How does customer purchase data reach the pipeline?
@@ -142,6 +171,8 @@ Challenges to Address:
 
 ```
 
+
+
 ### Architecture Sketches
 
 ```text
@@ -156,6 +187,8 @@ Customer Journey:
 4. Customer sees "Welcome [Company], [Motto]" page
 
 ```
+
+
 
 ### Implementation Ideas
 
