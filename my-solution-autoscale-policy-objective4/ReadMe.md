@@ -93,8 +93,8 @@ These are easily changed per customer.  Initially, we are setting request cpu an
 Again, these can be set based on customer profile.  And this is to prevent one customer dominating resource and it is the noisy-neighbour protection.
 If one customer's site spikes, HPA can add pods for that customer up to its quota, but it cannot take CPU or memory from the other 99
 customers' namespaces.
-
 Needs more understanding here.  cpu value of 2 or 4 are GHz? are these settings for prod only or can we set them for all environments? 
+
 
 ### Solution 4 - Routing per customer - Ingress
 One host per customer, routed by the Ingress to that customer's service and only to pods in that customer's namespace. 

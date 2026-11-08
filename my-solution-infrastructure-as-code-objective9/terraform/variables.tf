@@ -43,26 +43,6 @@ variable "node_desired_size" {
   default     = 2
 }
 
-variable "container_cpu_request" {
-  type        = string
-  default     = "100m"
-}
-
-variable "container_memory_request" {
-  type        = string
-  default     = "128Mi"
-}
-
-variable "container_cpu_limit" {
-  type        = string
-  default     = "500m"
-}
-
-variable "container_memory_limit" {
-  type        = string
-  default     = "256Mi"
-}
-
 variable "customers" {
   description = "Customer slugs. One namespace + ResourceQuota per slug. Adding a customer = adding one slug here. Company name, motto, host, and image tag are app data — they go to Helm, not Terraform."
   type        = set(string)

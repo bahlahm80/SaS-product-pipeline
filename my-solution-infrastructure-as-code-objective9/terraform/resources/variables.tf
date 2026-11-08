@@ -43,26 +43,6 @@ variable "node_desired_size" {
   default     = 2
 }
 
-variable "container_cpu_request" {
-  type        = string
-  default     = "100m"
-}
-
-variable "container_memory_request" {
-  type        = string
-  default     = "128Mi"
-}
-
-variable "container_cpu_limit" {
-  type        = string
-  default     = "500m"
-}
-
-variable "container_memory_limit" {
-  type        = string
-  default     = "256Mi"
-}
-
 variable "image_tag" {
   description = "Promoted, prod-approved image tag. Must be a valid version number e.g v1.0.0"
   type        = string
