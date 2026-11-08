@@ -73,27 +73,27 @@ jobs:
       group: prod-deploy-terraform
       cancel-in-progress: false
     steps:
-    - name: Authenticate to AWS for Terraform
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ secrets.AWS_PROD_TERRAFORM_ROLE }}
-        aws-region: us-east-1
-
-    - name: Ensure customer namespaces with Terraform (serial)
-      run: |
-        cd my-solution-infrastructure-as-code-objective9/terraform/environments/production
-        terraform init
-        echo '${{ needs.resolve-targets.outputs.targets }}' | jq -c '.[]' | while read -r TARGET; do
-        SLUG=$(echo "$TARGET" | jq -r '.slug')
-        if ! grep -q "\"$SLUG\"" sas-production.tf; then
-          python3 -c "p='sas-production.tf'; s=open(p).read(); s=s.replace('customers = []', 'customers = [\"$SLUG\"]'); open(p,'w').write(s)"
-          git pull --rebase && git push || (git pull --rebase && git push)
-        fi
-        terraform apply -auto-approve -target="module.customer[\"$SLUG\"]"
-        done
-
       - name: Checkout Code
         uses: actions/checkout@v4
+        
+      - name: Authenticate to AWS for Terraform
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_PROD_TERRAFORM_ROLE }}
+          aws-region: us-east-1
+
+      - name: Ensure customer namespaces with Terraform (serial)
+        run: |
+          cd my-solution-infrastructure-as-code-objective9/terraform/environments/production
+          terraform init
+          echo '${{ needs.resolve-targets.outputs.targets }}' | jq -c '.[]' | while read -r TARGET; do
+          SLUG=$(echo "$TARGET" | jq -r '.slug')
+          if ! grep -q "\"$SLUG\"" sas-production.tf; then
+            python3 -c "p='sas-production.tf'; s=open(p).read(); s=s.replace('customers = []', 'customers = [\"$SLUG\"]'); open(p,'w').write(s)"
+            git pull --rebase && git push || (git pull --rebase && git push)
+          fi
+          terraform apply -auto-approve -target="module.customer[\"$SLUG\"]"
+          done
 
   deploy-customer:
     needs: [resolve-targets, ensure-infra]
