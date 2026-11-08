@@ -44,13 +44,26 @@ jobs:
       targets: ${{ steps.targets.outputs.targets }}
       mode: ${{ steps.targets.outputs.mode }}
     steps:
-      - name: Resolve targets (payload for onboard, DB for rollout)
+      name: Install psql and jq
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client jq
+      name: Resolve targets (payload for onboard, DB for rollout)
         id: targets
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TARGET_IMAGE: ${{ github.event.client_payload.image_tag || inputs.image_tag }}
         run: |
-          echo "Onboard: build targets from github.event.client_payload / inputs — do NOT query the DB for customer info."
-          echo "Rollout: query the DB for all active customers (see SQL above)."
+          if [ "${{ github.event_name }}" = "repository_dispatch" ] && [ "${{ github.event.action }}" = "customer-purchased" ]; then
+            MODE=onboard
+            TARGETS=$(jq -cn --arg s "${{ github.event.client_payload.company_id }}" --arg n "${{ github.event.client_payload.company_name }}" --arg m "${{ github.event.client_payload.motto }}" --arg t "$TARGET_IMAGE" '[{slug:$s, company_name:$n, motto:$m, image_tag:$t}]')
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.mode }}" = "onboard" ]; then
+            MODE=onboard
+            TARGETS=$(jq -cn --arg s "${{ inputs.company_id }}" --arg n "${{ inputs.company_name }}" --arg m "${{ inputs.company_motto }}" --arg t "$TARGET_IMAGE" '[{slug:$s, company_name:$n, motto:$m, image_tag:$t}]')
+          else
+            MODE=rollout
+            TARGETS=$(psql "$DATABASE_URL" -t -A -c "SELECT COALESCE(json_agg(json_build_object('slug', company_id, 'company_name', company_name, 'motto', motto, 'image_tag', '$TARGET_IMAGE')), '[]'::json) FROM customers WHERE status = 'active' AND auto_upgrade IS TRUE AND current_image_tag IS DISTINCT FROM '$TARGET_IMAGE';")
+          fi
+            echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+            echo "targets=$TARGETS" >> "$GITHUB_OUTPUT"
 
   ensure-infra:
     needs: resolve-targets
@@ -60,14 +73,27 @@ jobs:
       group: prod-deploy-terraform
       cancel-in-progress: false
     steps:
+    - name: Authenticate to AWS for Terraform
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_PROD_TERRAFORM_ROLE }}
+        aws-region: us-east-1
+
+    - name: Ensure customer namespaces with Terraform (serial)
+      run: |
+        cd my-solution-infrastructure-as-code-objective9/terraform/environments/production
+        terraform init
+        echo '${{ needs.resolve-targets.outputs.targets }}' | jq -c '.[]' | while read -r TARGET; do
+        SLUG=$(echo "$TARGET" | jq -r '.slug')
+        if ! grep -q "\"$SLUG\"" sas-production.tf; then
+          python3 -c "p='sas-production.tf'; s=open(p).read(); s=s.replace('customers = []', 'customers = [\"$SLUG\"]'); open(p,'w').write(s)"
+          git pull --rebase && git push || (git pull --rebase && git push)
+        fi
+        terraform apply -auto-approve -target="module.customer[\"$SLUG\"]"
+        done
+
       - name: Checkout Code
         uses: actions/checkout@v4
-      - name: Ensure customer namespaces with Terraform (serial)
-        run: |
-          echo "For each target in needs.resolve-targets.outputs.targets:"
-          echo "  1. add slug to sas-production.tf if missing (pull --rebase, retry push)"
-          echo "  2. terraform init; terraform apply -auto-approve -target='module.customer[\"<slug>\"]'"
-          echo "Rollout targets: apply is a no-op, namespace already exists."
 
   deploy-customer:
     needs: [resolve-targets, ensure-infra]
@@ -83,7 +109,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Authenticate to AWS / EKS
-        run: echo "configure-aws-credentials (prod OIDC) + update-kubeconfig — copy from onboarding"
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_PROD_DEPLOY_ROLE }}
+          aws-region: us-east-1
+      
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name sas-cluster-production --region us-east-1
 
       - name: Upgrade customer (zero downtime)
         run: |
