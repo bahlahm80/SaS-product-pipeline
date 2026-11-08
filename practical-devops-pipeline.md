@@ -127,20 +127,28 @@ welcome!), or planning notes.*
 Add your thoughts here...
 Infrastructure as Code:
 - Kubernetes cluster node needed for pods
-- Need to support 10 - 100+ customers.  Autoscale policy needs to be set. 
-- Need Load balancer in front of the customer pods to direct traffic for performance optimization. 
-- Need Queue??  as part of this or part of objective 1 or 2.  Should this be part of infrastructure? 
-- Need ECR to store the sas product artifact for deployment
-- Need cloudwatch for logging
-- Need securtiy groups and VPNs for secured customer networking environment
-- Need ssm just in case sas product needs some secrets to run the application. 
+- Need to support 10 - 100+ customers.  Autoscale policy needs to be set. - Done 
+- Need Queue??  as part of this or part of objective 1 or 2.  Should this be part of infrastructure? No for now.
+- Need ECR to store the sas product artifact for deployment - Done
+- Need cloudwatch for logging - done
+- Need securtiy groups and VPNs for secured customer networking environment - Done
+- Need ssm just in case sas product needs some secrets to run the application. - Done
 
 CI/CD pipeline Ideas:
 - How do we handle multiple customer purchases/onboarding?  Can we run the onboarding deployment in parallel? 
-- How do we handle software updates to existing customers who already purchased the sas product? 
-- How do we ensure high quality so that once customer purchases the sas product, they get the high quality product?
+    We will probably use a queue which will be filled by the Purchase system.  Due to limitation on terraform like state lock, parallel execution is not feasible.  Instead we will queue the onboarding request and trigger the pipeline sequentially.
+
+- How do we handle software updates to existing customers who already purchased the sas product?  Done.  
+    We will grab the list of customers from the database that was filled by the purchase system. 
+
+- How do we ensure high quality so that once customer purchases the sas product, they get the high quality product? Done
+    We are running our end to end integration tests and smoke tests after each pipeline to ensure high quality. 
+
 - What happens if deployment has issue?  We should rollback to the last good version. 
+    For new customers, this will be cleanup, for existing customer, rollback to last good version. 
+
 - What if onboarding deployment has issues? 
+    We get the logs and show to the on-call developer for triage. 
 
 Scalable Web Serving:
 - How do we support one customer? Pod sizing and autoscale policy for the pod.
@@ -193,6 +201,16 @@ Customer Journey:
 ### Implementation Ideas
 
 ```text
+Here is the general end to end happy path customer purchase/onboarding flow:
+
+1. Customer clicks the purchase button from the SaaS product website.
+2. Purchase system stores customer information to the database with unique customer_id
+3. Purchase system generates a payload and triggers the CI/CD pipeline.
+4. SaaS product infrastructure gets created.
+5. SaaS product artifact gets deployed to the infrastructure.
+6. Customer is taken to the personalized welcome page.
+
+
 Example pipeline steps:
 1. Receive purchase webhook
 2. Extract customer data (company name, motto)
