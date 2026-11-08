@@ -17,13 +17,16 @@ The pipeline enforces code quality, test gating, and automated provisioning thro
 [Merge to Master] ◄───────────────────────────────────────────────────────────────┘
         │
         ▼
-(Dev Deployment) ──► Build & Push to ECR ──► Apply Terraform Dev ──► Full System Test Suite
+(Dev Deployment) ──► Build & Push to ECR and Artifactory ──► Apply Terraform Dev(Done manually once) ──► Full System Test Suite
         │
         ▼ (Manual Dispatch / Gate)
-(Staging Deploy) ──► Apply Terraform Staging ──► Full Test Suite ──► Gate Production
+(Staging Deploy) ──► Apply Terraform Staging(Done manually once) ──► Full Test Suite ──► Gate Production
         │
         ▼ (Customer "Purchase" Event / Webhook)
-(Prod Onboarding) ──► Build ECR Image ──► Terraform Apply Tenant ──► Smoke System Test Suite
+(Prod Onboarding) ──► Pool artifact from Artifactory ──► Terraform Apply Tenant(Only onboarding once) ──► Smoke System Test Suite
+        |
+        ▼ (Existing Customer Update - triggers via new artifact version.  Deployed upon Human approval)
+(Prod Update) ──► Pool artifact from Artifactory ──► Smoke System Test Suite
 
 ### 2. Workflow Specifications
 
