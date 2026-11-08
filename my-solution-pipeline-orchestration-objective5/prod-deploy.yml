@@ -44,9 +44,9 @@ jobs:
       targets: ${{ steps.targets.outputs.targets }}
       mode: ${{ steps.targets.outputs.mode }}
     steps:
-      name: Install psql and jq
+      - name: Install psql and jq
         run: sudo apt-get update && sudo apt-get install -y postgresql-client jq
-      name: Resolve targets (payload for onboard, DB for rollout)
+      - name: Resolve targets (payload for onboard, DB for rollout)
         id: targets
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
