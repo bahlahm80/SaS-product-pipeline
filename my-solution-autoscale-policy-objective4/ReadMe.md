@@ -49,6 +49,8 @@ Initially, we are setting the instance_type and the desired_size, node_min_size 
    At max scale, we assume 100 customers can be served.  When customer base grows to 101, the configuration needs to be changed.  Proper sizingand trade-off analysis needs to be done to have a concrete set for the long term.  For example, if current customer base is 100, and we expect this to become 1000 in the next 10 years, we can revisit the sizing every year and update.  However, if we expect to become 1000 in the next one year then upsize it to cover it. 
 
 These are passed in as variables so the value can be changed based on the proper sizing analysis.
+For example, for dev, node sizes are overriden from this file: [sas-dev](./../my-solution-infrastructure-as-code-objective9/terraform/environments/dev/sas-dev.tf)
+
 The EKS cluster node auto-scaling policy is set here: [cluster-autoscaler](./../my-solution-infrastructure-as-code-objective9/terraform/resources/cluster-autoscaler.tf) 
 
 ### Solution 2 - Kubernetes Pod Sizing and HPA
@@ -60,8 +62,8 @@ cpu_usage and memory usage and when it goes beyond threshold at 70% CPU and 80% 
 And vice versa we scale down when cpu-usage and memory 5 minutes below target.
 
 Customer pod sizing should be done properly based on the customer profile(e.g size of the customer etc.)
-This is built here: [Pod sizing](./../my-solution-infrastructure-as-code-objective9/terraform/modules/customer/main.tf).
-These are easily changed per customer.  Initially, 
+This is built here: [Pod sizing](./../my-solution-pipeline-orchestration-objective5/helm/tenant-template/values.yaml).
+These are easily changed per customer.  But all pods are same size through out the environment.  Nodes size vary per environment.   
 
 And the Horizontal Pod Autoscaling policy is setin the helm chart here: [HPA](./../my-solution-pipeline-orchestration-objective5/helm/tenant-template/templates/hpa.yaml)
 Numbers in this project:
@@ -83,18 +85,18 @@ How EKS cluster auto-scaling works with HPA, in order:
    node capacity has to scale too, or the extra pods sit
    in Pending. That is what Cluster Autoscaler solves.
 
-Cluster auto-scaling increases the nubmer of nodes based on node capacity of adding pods.  Then there is the cluster sizing t3.medium, t3.small and so on. 
+Cluster auto-scaling increases the number of nodes based on node capacity of adding pods.  Then there is the cluster sizing t3.medium, t3.small and so on. 
 How do we solve the infinitely growing customers?  Do we monitor and come back and resize the cluster with autoscaling policy set at the node and pod level?  
 What is the node capacity?  Is that differ per cluster sizing? 
 
 ### Solution 3 - Customer Resource Quota
-This is built here: [Pod sizing](./../my-solution-pipeline-orchestration-objective5/helm/tenant-template/templates/deployment.yaml).
+We put a resource quota so that no customers can request certain cpu usage and memory usage and max scale pods. 
+
+This is built here: [Resource Quota](./../my-solution-infrastructure-as-code-objective9/terraform/modules/customer/main.tf).
 These are easily changed per customer.  Initially, we are setting request cpu and memory to be 2 and 2Gi with limits on are 4 and 4Gi and number of pods limited to 10
 Again, these can be set based on customer profile.  And this is to prevent one customer dominating resource and it is the noisy-neighbour protection.
 If one customer's site spikes, HPA can add pods for that customer up to its quota, but it cannot take CPU or memory from the other 99
 customers' namespaces.
-Needs more understanding here.  cpu value of 2 or 4 are GHz? are these settings for prod only or can we set them for all environments? 
-
 
 ### Solution 4 - Routing per customer - Ingress
 One host per customer, routed by the Ingress to that customer's service and only to pods in that customer's namespace. 
