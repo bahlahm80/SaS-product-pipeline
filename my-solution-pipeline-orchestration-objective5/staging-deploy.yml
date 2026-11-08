@@ -49,7 +49,7 @@ jobs:
 
 
       - name: Run Staging Integration Tests
-        uses: ./my-solution-pipeline-orchestration-objective5/.github/actions/run-system-tests
+        uses: ./my-solution-pipeline-orchestration-objective5/.github/actions/run-system-test
         with:
           test_type: 'smoke'
           target_url: 'https://staging.sas-product.internal'

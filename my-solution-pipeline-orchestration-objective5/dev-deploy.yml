@@ -51,7 +51,7 @@ jobs:
           --timeout 5m
 
       - name: Run Post-Deploy Integration Tests
-        uses: ./my-solution-pipeline-orchestration-objective5/.github/actions/run-system-tests
+        uses: ./my-solution-pipeline-orchestration-objective5/.github/actions/run-system-test
         with:
           test_type: 'full' 
           target_url: 'https://dev.sas-product.internal'

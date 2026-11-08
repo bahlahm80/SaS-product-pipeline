@@ -52,7 +52,7 @@ jobs:
           echo "Onboard: build targets from github.event.client_payload / inputs — do NOT query the DB for customer info."
           echo "Rollout: query the DB for all active customers (see SQL above)."
 
-ensure-infra:
+  ensure-infra:
     needs: resolve-targets
     runs-on: ubuntu-latest
     environment: production
@@ -69,7 +69,7 @@ ensure-infra:
           echo "  2. terraform init; terraform apply -auto-approve -target='module.customer[\"<slug>\"]'"
           echo "Rollout targets: apply is a no-op, namespace already exists."
 
-deploy-customer:
+  deploy-customer:
     needs: [resolve-targets, ensure-infra]
     runs-on: ubuntu-latest
     environment: production
@@ -81,8 +81,10 @@ deploy-customer:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
       - name: Authenticate to AWS / EKS
         run: echo "configure-aws-credentials (prod OIDC) + update-kubeconfig — copy from onboarding"
+
       - name: Upgrade customer (zero downtime)
         run: |
           SLUG="${{ matrix.target.slug }}"
@@ -91,39 +93,19 @@ deploy-customer:
             --set companyName="${{ matrix.target.company_name }}" \
             --set companyMotto="${{ matrix.target.motto }}" \
             --set host="$SLUG.sas-product.com" \
-            --set image.tag="${{ inputs.image_tag }}"
+            --set image.tag="${{ client_payload.image_tag }}"
+
       - name: Smoke test this customer (welcome-page check)
         uses: ./my-solution-pipeline-orchestration-objective5/.github/actions/run-system-test
         with:
           test_type: smoke
           target_url: https://${{ matrix.target.slug }}.sas-product.com
-      - name: Roll back this customer only on failure
-        if: failure()
-        run: |
-          SLUG="${{ matrix.target.slug }}"
-          REVISION_COUNT=$(helm history customer-$SLUG -n customer-$SLUG --output json 2>/dev/null | jq '. | length' || echo 0)
-          if [ "$REVISION_COUNT" -gt 1 ]; then
-            # Existing customer: roll back to last good Helm revision.
-            helm rollback customer-$SLUG -n customer-$SLUG
-            echo "Customer update failed.  Rolling back to last good version."
-          else
-            # Fresh onboard only: tear down the app, then destroy the
-            # namespace WITH Terraform so cluster and state agree.
-            # NEVER kubectl delete namespace (drifts Terraform state).
-            helm uninstall customer-$SLUG -n customer-$SLUG --wait || true
-            cd my-solution-infrastructure-as-code-objective9/terraform/environments/production
-            terraform init
-            terraform destroy -auto-approve -target="module.customer[\"$SLUG\"]"
-            # Leave the slug in sas-production.tf and the DB row in
-            # place, so a retry / re-purchase re-applies cleanly.
-            echo "Customer Onboarding failed. Cleaning up the infrastructure. "
-          fi
 
       - name: Diagnose failure and report error (catch)
         if: failure()
         run: |
           SLUG="${{ matrix.target.slug }}"
-          echo "::error title=Prod deploy failed for $SLUG::Customer=$SLUG, image_tag=${{ inputs.image_tag }}, release=customer-$SLUG, namespace=customer-$SLUG, url=https://$SLUG.sas-product.com"
+          echo "::error title=Prod deploy failed for $SLUG::Customer=$SLUG, image_tag=${{ client_payload.image_tag }}, release=customer-$SLUG, namespace=customer-$SLUG, url=https://$SLUG.sas-product.com"
 
           echo "::group::Helm status and history for $SLUG"
           helm status customer-$SLUG -n customer-$SLUG || true
@@ -146,6 +128,28 @@ deploy-customer:
             echo "- See the Diagnose step above for helm status, pod describe, and logs."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Roll back this customer only on failure
+        if: failure()
+        run: |
+          SLUG="${{ matrix.target.slug }}"
+          REVISION_COUNT=$(helm history customer-$SLUG -n customer-$SLUG --output json 2>/dev/null | jq '. | length' || echo 0)
+          if [ "$REVISION_COUNT" -gt 1 ]; then
+            # Existing customer: roll back to last good Helm revision.
+            helm rollback customer-$SLUG -n customer-$SLUG
+            echo "Customer update failed.  Rolling back to last good version."
+          else
+            # Fresh onboard only: tear down the app, then destroy the
+            # namespace WITH Terraform so cluster and state agree.
+            # NEVER kubectl delete namespace (drifts Terraform state).
+            helm uninstall customer-$SLUG -n customer-$SLUG --wait || true
+            cd my-solution-infrastructure-as-code-objective9/terraform/environments/production
+            terraform init
+            terraform destroy -auto-approve -target="module.customer[\"$SLUG\"]"
+            # Leave the slug in sas-production.tf and the DB row in
+            # place, so a retry / re-purchase re-applies cleanly.
+            echo "Customer Onboarding failed. Cleaning up the infrastructure. "
+          fi
+
       - name: Report welcome page
         if: success()
         run: |
@@ -155,4 +159,3 @@ deploy-customer:
           echo "Customer $SLUG successfully onboarded/updated!"
           echo "Welcome page: $WELCOME_PAGE_URL"
           echo "Loging page url: $LOGIN_PAGE_URL"   
-
